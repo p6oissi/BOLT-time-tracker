@@ -1,0 +1,5 @@
+click>=8.1
+pywin32>=306
+psutil>=5.9
+tabulate>=0.9
+ollama>=0.2
