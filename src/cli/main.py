@@ -47,17 +47,12 @@ def _format_duration(total_seconds: int) -> str:
     return f"{m}m"
 
 
-def _print_summary(session_name: str, date_str: str, durations: dict[str, int], entries: list[TaskEntry]) -> None:
+def _render_table(session_name: str, date_str: str, durations: dict[str, int], last_desc: dict[str, str]) -> None:
+    """Print the formatted summary table. Shared by both `start` and `report` commands."""
     total_seconds = sum(durations.values())
     click.echo()
     click.echo(f"Session: {session_name}  |  {date_str}  |  Total: {_format_duration(total_seconds)}")
     click.echo()
-
-    # Build table rows: one row per category showing last AI description for that category
-    last_desc: dict[str, str] = {}
-    for entry in entries:
-        if entry.category != "idle":
-            last_desc[entry.category] = entry.ai_description or entry.window_title
 
     rows = []
     for category, seconds in sorted(durations.items(), key=lambda x: x[1], reverse=True):
@@ -67,6 +62,15 @@ def _print_summary(session_name: str, date_str: str, durations: dict[str, int], 
     headers = ["Category", "Duration", "%", "AI Description (last entry)"]
     click.echo(tabulate(rows, headers=headers, tablefmt="simple"))
     click.echo()
+
+
+def _print_summary(session_name: str, date_str: str, durations: dict[str, int], entries: list[TaskEntry]) -> None:
+    last_desc: dict[str, str] = {
+        e.category: e.ai_description or e.window_title
+        for e in entries
+        if e.category != "idle"
+    }
+    _render_table(session_name, date_str, durations, last_desc)
 
 
 @click.group()
@@ -144,19 +148,7 @@ def report(csv_file: str) -> None:
         durations[cat] = durations.get(cat, 0) + minutes * 60
         last_desc[cat] = row.get("ai_description", row.get("window_title", ""))
 
-    total_seconds = sum(durations.values())
-    click.echo()
-    click.echo(f"Session: {session_name}  |  {date_str}  |  Total: {_format_duration(total_seconds)}")
-    click.echo()
-
-    table_rows = []
-    for cat, seconds in sorted(durations.items(), key=lambda x: x[1], reverse=True):
-        pct = int(seconds / total_seconds * 100) if total_seconds else 0
-        table_rows.append([cat, _format_duration(seconds), f"{pct}%", last_desc.get(cat, "—")])
-
-    headers = ["Category", "Duration", "%", "AI Description (last entry)"]
-    click.echo(tabulate(table_rows, headers=headers, tablefmt="simple"))
-    click.echo()
+    _render_table(session_name, date_str, durations, last_desc)
 
 
 if __name__ == "__main__":

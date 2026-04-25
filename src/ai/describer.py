@@ -50,6 +50,8 @@ def _describe_entry(entry: TaskEntry, model: str) -> str:
     if ollama is None:
         logger.warning("ollama package not installed — using window title as fallback")
         return entry.window_title
+    # `assert` narrows the type for static analysers (ollama is definitely not None here).
+    assert ollama is not None
     try:
         response: Any = ollama.chat(
             model=model,
