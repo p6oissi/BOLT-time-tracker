@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -13,7 +14,7 @@ from tabulate import tabulate
 
 from ai.describer import enrich_session
 from storage.csv_writer import write_session
-from tracker.models import TaskEntry
+from tracker.models import TaskEntry, TrackerStatus
 from tracker.monitor import get_active_window
 from tracker.session import SessionTracker
 
@@ -45,6 +46,49 @@ def _format_duration(total_seconds: int) -> str:
     if h:
         return f"{h}h {m:02d}m"
     return f"{m}m"
+
+
+def _format_duration_hms(total_seconds: int) -> str:
+    """Format seconds as '1m 12s' (seconds-precision) for the live status line."""
+    h = total_seconds // 3600
+    m = (total_seconds % 3600) // 60
+    s = total_seconds % 60
+    if h:
+        return f"{h}h {m:02d}m {s:02d}s"
+    if m:
+        return f"{m}m {s:02d}s"
+    return f"{s}s"
+
+
+def _render_status_line(status: TrackerStatus, max_title_len: int = 50) -> None:
+    """Overwrite the current terminal line with live tracking status.
+
+    Uses \\r (carriage return) to rewrite in place; \\x1b[K clears leftover
+    characters when a shorter line follows a longer one.
+    """
+    if not status.category:
+        line = "Waiting for first window..."
+    elif status.category == "idle":
+        line = (
+            f"[idle]  |  idle: {_format_duration_hms(status.entry_seconds)}"
+            f"  |  session: {_format_duration_hms(status.session_seconds)}"
+        )
+    else:
+        title = status.window_title
+        if len(title) > max_title_len:
+            title = title[: max_title_len - 1] + "…"
+        line = (
+            f"[{status.category}]  {title}"
+            f"  |  entry: {_format_duration_hms(status.entry_seconds)}"
+            f"  |  session: {_format_duration_hms(status.session_seconds)}"
+        )
+
+    term_width = shutil.get_terminal_size(fallback=(80, 24)).columns
+    if len(line) > term_width:
+        line = line[: term_width - 1] + "…"
+
+    sys.stdout.write(f"\r{line}\x1b[K")
+    sys.stdout.flush()
 
 
 def _render_table(session_name: str, date_str: str, durations: dict[str, int], last_desc: dict[str, str]) -> None:
@@ -99,12 +143,14 @@ def start(name: str, interval: int, model: str, output: str) -> None:
         while True:
             snapshot = get_active_window()
             tracker.tick(snapshot)
+            _render_status_line(tracker.status)
             time.sleep(interval)
     except KeyboardInterrupt:
-        pass
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     session = tracker.stop()
-    click.echo("\nSession stopped. Generating AI descriptions...")
+    click.echo("Session stopped. Generating AI descriptions...")
     session = enrich_session(session, model=model)
 
     output_dir = Path(output)

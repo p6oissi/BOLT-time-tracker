@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from tracker.classifier import classify
-from tracker.models import Session, TaskEntry, WindowSnapshot
+from tracker.models import Session, TaskEntry, TrackerStatus, WindowSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +107,24 @@ class SessionTracker:
         self._current_title = ""
         self._current_start = None
         self._last_snapshot = None
+
+    @property
+    def status(self) -> TrackerStatus:
+        """Return a live snapshot of tracking state. Read-only, no side effects."""
+        if self._session is None or self._current_start is None:
+            return TrackerStatus(
+                category=self._current_category or "",
+                window_title=self._current_title,
+                entry_seconds=0,
+                session_seconds=0,
+            )
+        now = datetime.now()
+        entry_secs = max(0, int((now - self._current_start).total_seconds()))
+        committed = self._session.total_active_seconds
+        is_active = self._current_category not in (None, "idle")
+        return TrackerStatus(
+            category=self._current_category or "",
+            window_title=self._current_title,
+            entry_seconds=entry_secs,
+            session_seconds=committed + (entry_secs if is_active else 0),
+        )

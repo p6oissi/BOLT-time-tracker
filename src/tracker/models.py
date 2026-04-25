@@ -72,3 +72,13 @@ class Session:
     @property
     def total_active_seconds(self) -> int:
         return sum(self.duration_by_category().values())
+
+
+@dataclass
+class TrackerStatus:
+    """Point-in-time snapshot of live tracker state for display. No I/O, no side effects."""
+
+    category: str        # "coding", "idle", "other", "" if not yet started
+    window_title: str    # current window title; "" when idle or no window
+    entry_seconds: int   # elapsed seconds in the current (uncommitted) entry
+    session_seconds: int # committed non-idle seconds + current entry if not idle

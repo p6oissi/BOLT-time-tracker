@@ -74,7 +74,15 @@ python run.py start --name "Sprint 3 - Auth" --interval 5
 | `--model` | `mistral` | Ollama model to use for AI descriptions |
 | `--output` | `logs` | Directory to save the CSV file |
 
-**Press `Ctrl+C` to stop tracking.** The session is saved and the summary prints automatically.
+While tracking, a live status line updates in place every poll interval:
+
+```
+[coding]  main.py - Bolt  |  entry: 1m 12s  |  session: 4m 32s
+```
+
+The line rewrites itself each tick — no scrolling output. When idle (no active window), it shows `[idle]` instead.
+
+**Press `Ctrl+C` to stop tracking.** The status line is replaced by "Session stopped." and the summary prints automatically.
 
 ### Print a report from an existing CSV
 
@@ -99,7 +107,7 @@ Run with coverage:
 python -m pytest tests/ -v --cov=src
 ```
 
-All 63 tests pass without Ollama or real win32 hardware.
+All 93 tests pass without Ollama or real win32 hardware.
 
 ---
 
@@ -109,6 +117,7 @@ All 63 tests pass without Ollama or real win32 hardware.
 [OK] Ollama is running — AI descriptions will use 'mistral'.
 Tracking started: 'Sprint 3 - Auth' (interval: 5s). Press Ctrl+C to stop.
 
+[coding]  models.py - AuthService  |  entry: 1m 12s  |  session: 4m 32s
 ^C
 Session stopped. Generating AI descriptions...
 
